@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -23,6 +24,14 @@ func errorHandle(s, e, l *int, f *bool, d *string) (err error) {
 }
 
 func parseFlag() (s, e, l *int, f *bool, d *string) {
+	defer func() {
+		if r := recover(); r != nil {
+			os.Stderr.WriteString(fmt.Sprintf("%v\n", r))
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+	}()
+
 	cmdl := flag.CommandLine
 	s = cmdl.Int("s", 1, "the first page selected")
 	e = cmdl.Int("e", 1, "the last page selected")
@@ -31,18 +40,21 @@ func parseFlag() (s, e, l *int, f *bool, d *string) {
 	f = cmdl.Bool("f", false, "whether the page is separeted by \\f?")
 
 	cmdl.Parse(os.Args[1:])
-	if w := errorHandle(s, e, l, f, d); w != nil {
-		os.Stderr.WriteString(w.Error() + "\n")
-		// os.Stderr.WriteString("\n")
-		cmdl.PrintDefaults()
-		// os.Stderr.WriteString(w.Error())
-		os.Exit(1)
+	if err := errorHandle(s, e, l, f, d); err != nil {
+		panic(err)
+
 	}
 	return
 
 }
 
 func ouputByDelimiter(rd io.Reader, delimiter byte, e, s, l *int) {
+	defer func() {
+		if r := recover(); r != nil {
+			os.Stderr.WriteString(fmt.Sprintf("%v\n", r))
+			os.Exit(1)
+		}
+	}()
 	bufRd := bufio.NewReader(rd)
 	linesNum := 1
 	pageNum := 1
@@ -50,8 +62,7 @@ func ouputByDelimiter(rd io.Reader, delimiter byte, e, s, l *int) {
 		str, err := bufRd.ReadString(delimiter)
 		if err != nil {
 			if err != io.EOF {
-				os.Stderr.WriteString(err.Error())
-				os.Exit(1)
+				panic(err)
 			}
 			break
 		}
@@ -60,7 +71,6 @@ func ouputByDelimiter(rd io.Reader, delimiter byte, e, s, l *int) {
 		}
 		if pageNum >= *s && pageNum <= *e {
 			os.Stdout.WriteString(str)
-			// os.Stdout.Write([]byte{'\n'})
 		}
 		pageNum = linesNum / *l + 1
 		linesNum++
@@ -68,6 +78,12 @@ func ouputByDelimiter(rd io.Reader, delimiter byte, e, s, l *int) {
 }
 
 func selpg() {
+	defer func() {
+		if r := recover(); r != nil {
+			os.Stderr.WriteString(fmt.Sprintf("%v\n", r))
+			os.Exit(1)
+		}
+	}()
 	s, e, l, f, _ := parseFlag()
 	var delimiter byte = '\n'
 	if *f {
@@ -78,11 +94,10 @@ func selpg() {
 		for index, filename := range files {
 			file, err := os.OpenFile(filename, os.O_RDONLY, os.ModeType)
 			defer file.Close()
+
 			if err != nil {
-				os.Stderr.WriteString(err.Error())
-				os.Exit(1)
+				panic(err)
 			}
-			// bufRd := bufio.NewReader(file)
 			var tip string = "\nthis is file " + strconv.Itoa(index+1) + " :\n"
 			if index == 0 {
 				tip = "this is file " + strconv.Itoa(index+1) + " :\n"
